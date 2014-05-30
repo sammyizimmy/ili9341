@@ -1,12 +1,5 @@
 /*
- * Admatec C-Berry LCD for Raspberry Pi Model B
- *
- * Copyright (C) 2014 Ulrich Völkel
- *
- * based on:
- *    bcm2835 library           Copyright (C) 2011-2013 Mike McCauley   GPLv2
- *    C-Berry example code      Copyright (C) 2013 admatec GmbH         GPLv3
- *
+ * ili9342 LCD for Raspberry Pi Model B rev2
  */
  
 #define BCM2708_PERI_BASE        0x20000000
@@ -26,7 +19,8 @@
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 
-#define BLOCK_SIZE (4*1024)
+
+#define BLOCKSIZE (4*1024)
 
 // GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x) or SET_GPIO_ALT(x,y)
 #define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
@@ -52,16 +46,19 @@
 #define IM0 10
 #define RESET 17
 
-// 320 x 240 16bpp (65K color)
+#define ORIENTATION 0 //0=LANDSCAPE 1=PORTRAIT  
+
 #define DISPLAY_WIDTH   320
 #define DISPLAY_HEIGHT  240
+
 #define DISPLAY_BPP     16
+
 
 
 volatile unsigned *gpio;
 
 
-// Set to input
+// Set to output
 static void gpio_setoutput(char g)
 {
 		INP_GPIO(g); // must use INP_GPIO before we can use OUT_GPIO 
@@ -75,12 +72,7 @@ static void gpio_setstate(char g,char state)
 }
 
 
-/*
- * all tft_ and raio_ functions are based on 
- * the C-Berry example code from admatec
- */
-
-// initialization of GPIO and SPI
+// initialization of GPIO
 static void tft_init_board(struct fb_info *info)
 {
 
@@ -119,7 +111,7 @@ static void tft_init_board(struct fb_info *info)
 }
 
 // hard reset of the graphic controller and the tft
-static void tft_hard_reset()
+static void tft_hard_reset(void)
 {
     gpio_setstate(RESET,0);
     msleep(120);
@@ -158,7 +150,7 @@ static void tft_data_write(char data)
 }
 
 // initialization of ili9341
-static void raio_init(struct fb_info *info)
+static void tft_init(struct fb_info *info)
 {
 	
 	tft_hard_reset();
@@ -230,10 +222,12 @@ static void raio_init(struct fb_info *info)
 }
 
 // write memory to TFT
-static void ili9341_update_display_area(struct fb_image *image)
+static void ili9341_update_display_area(const struct fb_image *image)
 {
+	int x,y;
+	
 	// set column
-	tft_command_write(0x2A);
+	(ORIENTATION) ? tft_command_write(0x2B) : tft_command_write(0x2A);
 	
 	tft_data_write(image->dx >> 8);
 	tft_data_write(image->dx);
@@ -241,7 +235,7 @@ static void ili9341_update_display_area(struct fb_image *image)
 	tft_data_write((image->dx + image->width) >> 8);
 	tft_data_write(image->dx + image->width);
 	// set row
-	tft_command_write(0x2B);
+	(ORIENTATION) ? tft_command_write(0x2A) : tft_command_write(0x2B);
 	
 	tft_data_write(image->dy >> 8);
 	tft_data_write(image->dy);
@@ -251,23 +245,31 @@ static void ili9341_update_display_area(struct fb_image *image)
 		
 	tft_command_write(0x2C); //Memory Write
 	
-	int x,y;
-	for(y=0;y < image->width ;y++){
-		for(x=0;x < image->height ;x++){
-			tft_data_write(image->data[(image->dx * (2 * image->width)) + (image->dy * 2) + 1]);
-			tft_data_write(image->data[(image->dx * (2 * image->width)) + (image->dy * 2) + 2]);
+	if(ORIENTATION == 0){
+		for(y=0;y < image->width ;y++){
+			for(x=0;x < image->height ;x++){
+				tft_data_write(image->data[(image->dx * (2 * image->width)) + (image->dy * 2) + 1]);
+				tft_data_write(image->data[(image->dx * (2 * image->width)) + (image->dy * 2) + 2]);
+			}
+		}
+	}else{
+		for(y=0;y < image->width ;y++){
+			for(x=0;x < image->height ;x++){
+				tft_data_write(image->data[(image->dx * (2 * image->width)) + (image->dy * 2) + 1]);
+				tft_data_write(image->data[(image->dx * (2 * image->width)) + (image->dy * 2) + 2]);
+			}
 		}
 	}
-	
+
 	tft_command_write(0x29); //display ON	
 }
 
 
-// write memory to TFT
-static void ili9341_update_display_color_area(struct fb_fillrect *rect)
+static void ili9341_update_display_color_area(const struct fb_fillrect *rect)
 {
+	int x,y;
 	// set column
-	tft_command_write(0x2A);
+	(ORIENTATION) ? tft_command_write(0x2B) : tft_command_write(0x2A);
 	
 	tft_data_write(rect->dx >> 8);
 	tft_data_write(rect->dx);
@@ -275,7 +277,8 @@ static void ili9341_update_display_color_area(struct fb_fillrect *rect)
 	tft_data_write((rect->dx + rect->width) >> 8);
 	tft_data_write(rect->dx + rect->width);
 	// set row
-	tft_command_write(0x2B);
+	
+	(ORIENTATION) ? tft_command_write(0x2A) : tft_command_write(0x2B);
 	
 	tft_data_write(rect->dy >> 8);
 	tft_data_write(rect->dy);
@@ -285,63 +288,71 @@ static void ili9341_update_display_color_area(struct fb_fillrect *rect)
 		
 	tft_command_write(0x2C); //Memory Write
 	
-	int x,y;
-	for(y=0;y < rect->width ;y++){
-		for(x=0;x < rect->height ;x++){
-			tft_data_write(rect->color);
-			tft_data_write(rect->color >> 8);
+	if(ORIENTATION == 0){
+		for(y=0;y < rect->width ;y++){
+			for(x=0;x < rect->height ;x++){
+				tft_data_write(rect->color);
+				tft_data_write(rect->color >> 8);
+			}
+		}
+	}else{
+		for(y=0;y < rect->height ;y++){
+			for(x=0;x < rect->width ;x++){
+				tft_data_write(rect->color);
+				tft_data_write(rect->color >> 8);
+			}
 		}
 	}
 	
 	tft_command_write(0x29); //display ON	
 }
 
-// write memory to TFT
-static void ili9341_update_display(struct fb_info *info)
+static void ili9341_update_display(const struct fb_info *info)
 {
+	int x,y;
+	
 	tft_command_write(0x2C); //Memory Write
 	
-	int x,y;
-	for(y=0;y < 320 ;y++){
-		for(x=0;x < 240 ;x++){
-			tft_data_write(info->screen_base[(x * (2 * 320)) + (y * 2) + 1]);
-			tft_data_write(info->screen_base[(x * (2 * 320)) + (y * 2) + 2]);
+	if(ORIENTATION == 0){
+		for(y=0;y < DISPLAY_WIDTH ;y++){
+			for(x=0;x < DISPLAY_HEIGHT ;x++){
+				tft_data_write(info->screen_base[(x * (2 * DISPLAY_WIDTH)) + (y * 2) + 1]);
+				tft_data_write(info->screen_base[(x * (2 * DISPLAY_WIDTH)) + (y * 2) + 2]);
+			}
+		}
+	}else{
+		for(y=(DISPLAY_HEIGHT - 1);y >= 0 ;y--){
+			for(x=0;x < DISPLAY_WIDTH ;x++){
+				tft_data_write(info->screen_base[(y * (2 * DISPLAY_WIDTH)) + (x * 2) + 1]);
+				tft_data_write(info->screen_base[(y * (2 * DISPLAY_WIDTH)) + (x * 2) + 2]);
+			}
 		}
 	}
-
 	tft_command_write(0x29); //display ON
-	
-    //tft_data_multiwrite(par, (char __force*)info->screen_base, info->fix.smem_len / 2);
 }
 
 static void ili9341_fillrect(struct fb_info *info, const struct fb_fillrect *rect)
 {
-    //printk(KERN_INFO "fb%d: do fillrect\n", info->node);
-    //sys_fillrect(info, rect);
-    ili9341_update_display_color_area(rect);
-    //ili9341_update_display(info);
+	//printk(KERN_INFO "fb%d: ili9341_fillrect\n", info->node);
+    //ili9341_update_display_color_area(rect);
+    ili9341_update_display(info);
 }
 
 static void ili9341_copyarea(struct fb_info *info, const struct fb_copyarea *area)
 {
-    //printk(KERN_INFO "fb%d: do copyarea\n", info->node);
-    //pyarea(info, area);
+	//printk(KERN_INFO "fb%d: ili9341_copyarea\n", info->node);
     ili9341_update_display(info);
 }
 
 static void ili9341_imageblit(struct fb_info *info, const struct fb_image *image)
 {
-   //printk(KERN_INFO "fb%d: do imageblit\n", info->node);
-   //sys_imageblit(info, image);
-   ili9341_update_display_area(image);
-   // ili9341_update_display(info);
+   //printk(KERN_INFO "fb%d: ili9341_imageblit\n", info->node);
+   //ili9341_update_display_area(image);
+   ili9341_update_display(info);
 }
 
 static ssize_t ili9341_write(struct fb_info *info, const char __user *buf, size_t count, loff_t *ppos)
 {
-
-//    printk(KERN_INFO "fb%d: do write\n", info->node);
-
 	unsigned long p = *ppos;
 	void *dst;
 	int err = 0;
@@ -384,20 +395,54 @@ static ssize_t ili9341_write(struct fb_info *info, const char __user *buf, size_
 	ili9341_update_display(info);
 
 	return (err) ? err : count;   
-    
-    //return ret;
 }
 
 static ssize_t ili9341_read(struct fb_info *info, const char __user *buf, size_t count, loff_t *ppos)
 {
-    //ssize_t ret = fb_sys_write(info, buf, count, ppos);
-    ili9341_update_display(info);
-    //return ret;
+	unsigned long p = *ppos;
+	void *dst;
+	int err = 0;
+	unsigned long total_size;
+
+	if (info->state != FBINFO_STATE_RUNNING)
+		return -EPERM;
+
+	total_size = info->screen_size;
+
+	if (total_size == 0)
+		total_size = info->fix.smem_len;
+
+	if (p > total_size)
+		return -EFBIG;
+
+	if (count > total_size) {
+		err = -EFBIG;
+		count = total_size;
+	}
+
+	if (count + p > total_size) {
+		if (!err)
+			err = -ENOSPC;
+
+		count = total_size - p;
+	}
+
+	dst = (void __force *) (info->screen_base + p);
+
+	if (info->fbops->fb_sync)
+		info->fbops->fb_sync(info);
+
+	if (copy_from_user(dst, buf, count))
+		err = -EFAULT;
+
+	if  (!err)
+		*ppos += count;
+
+	return (err) ? err : count;
 }
 
 static void ili9341_deferred_io(struct fb_info *info, struct list_head *pagelist)
 {
-    //printk(KERN_INFO "fb%d: do deferred_io\n", info->node);
     ili9341_update_display(info);
 }
 
@@ -413,6 +458,7 @@ static struct fb_fix_screeninfo ili9341_fix = {
     .ywrapstep      = 0,
     .line_length    = DISPLAY_WIDTH * DISPLAY_BPP / 8,
 };
+
 
 static struct fb_var_screeninfo ili9341_var = {
     .width          = DISPLAY_WIDTH,
@@ -435,6 +481,7 @@ static struct fb_var_screeninfo ili9341_var = {
     .transp.offset  = 0,
     .transp.length  = 0,
 };
+
 
 static struct fb_ops ili9341_ops = {
     .owner          = THIS_MODULE,
@@ -493,7 +540,6 @@ static int ili9341_probe(struct platform_device *pdev)
 
     retval = register_framebuffer(info);
     if (retval < 0) {
-        //backlight_device_unregister(info->bl_dev);
         framebuffer_release(info);
         vfree(vmem);
         return retval;
@@ -501,13 +547,13 @@ static int ili9341_probe(struct platform_device *pdev)
 
     platform_set_drvdata(pdev, info);
 
-    gpio = ioremap(GPIO_BASE, BLOCK_SIZE);
+    gpio = ioremap(GPIO_BASE, BLOCKSIZE);
 
     tft_init_board(info);
-    tft_hard_reset(info);
-    raio_init(info);
+    tft_hard_reset();
+    tft_init(info);
 
-    printk(KERN_INFO "fb%d: admatec C-Berry LCD framebuffer device\n", info->node);
+    printk(KERN_INFO "fb%d: ili9341 LCD framebuffer device\n", info->node);
     return 0;
 }
 
@@ -519,7 +565,6 @@ static int ili9341_remove(struct platform_device *dev)
 
     if (info) {
         unregister_framebuffer(info);
-        //backlight_device_unregister(info->bl_dev);
         fb_deferred_io_cleanup(info);
         vfree((void __force *)info->screen_base);
 
@@ -574,7 +619,7 @@ MODULE_PARM_DESC(fps, "Frames per second (default 25)");
 module_init(ili9341_init);
 module_exit(ili9341_exit);
 
-MODULE_DESCRIPTION("admatec C-Berry LCD framebuffer driver");
-MODULE_AUTHOR("Ulrich Völkel");
+MODULE_DESCRIPTION("ili9341 LCD framebuffer driver");
+MODULE_AUTHOR("sammyizimmy");
 MODULE_LICENSE("GPL");
 
