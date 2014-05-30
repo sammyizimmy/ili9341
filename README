@@ -1,6 +1,6 @@
 ili9341
 ========
-A Raspberry pi frambuffer driver for the ili9341 lcd driver.
+A Raspberry pi framebuffer driver for the ili9341 lcd driver.
 I am using the NHD-2.4-240320SF-CTXI#-T1 (http://www.newhavendisplay.com/nhd24240320sfctxit1-p-3975.html)
 
 
