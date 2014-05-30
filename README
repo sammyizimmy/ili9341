@@ -1,3 +1,24 @@
 ili9341
 ========
 
+
+
+
+
+R-PI Model B v2 GPIO
+
+LCD GPIO p1 p2 GPIO LCD
+      3v--* o--5v
+      02--o o--5v
+      03--o o--GND
+DC----04--o o--14---RD
+     GND--o o--15---WR
+RESET-17--o o--18---D2
+CS----27--o o--GND
+      22--o o--23---D3
+      3v--o o--24---D4
+IM0---10--o o--GND
+D0----09--o o--25---D5
+D1----11--o o--08---D6
+     GND--o o--07---D7
+        p25 p26
