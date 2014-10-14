@@ -24,14 +24,14 @@ LCD GPIO p1 p2 GPIO LCD
       03--o o--GND
 DC----04--o o--14---RD
      GND--o o--15---WR
-RESET-17--o o--18---DB2
+RESET-17--o o--18---DB10
 CS----27--o o--GND
-      22--o o--23---DB3
-      3v--o o--24---DB4
+      22--o o--23---DB11
+      3v--o o--24---DB12
 IM0---10--o o--GND
-DB0---09--o o--25---DB5
-DB1---11--o o--08---DB6
-     GND--o o--07---DB7
+DB8---09--o o--25---DB13
+DB9---11--o o--08---DB14
+     GND--o o--07---DB15
         p25 p26
 
 Photos:
