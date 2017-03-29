@@ -35,9 +35,6 @@ DB9---11--o o--08---DB14
      GND--o o--07---DB15
         p25 p26
 
-Photos:
+Photos: See photos folder.
 </pre>
-	![Desktop](/photos/X_running_screen.JPG)
-	![Connector](/photos/connector.JPG)
-	![Full View](/photos/full_view.JPG)
     
