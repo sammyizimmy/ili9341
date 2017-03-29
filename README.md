@@ -1,4 +1,4 @@
-```text
+<pre>
 ili9341
 ========
 A Raspberry pi framebuffer driver for the ili9341 lcd driver.
@@ -36,7 +36,7 @@ DB9---11--o o--08---DB14
         p25 p26
 
 Photos:
-```
+</pre>
 	![Desktop](/photos/X_running_screen.JPG)
 	![Connector](/photos/connector.JPG)
 	![Full View](/photos/full_view.JPG)
