@@ -397,7 +397,7 @@ static ssize_t ili9341_write(struct fb_info *info, const char __user *buf, size_
 	return (err) ? err : count;   
 }
 
-static ssize_t ili9341_read(struct fb_info *info, const char __user *buf, size_t count, loff_t *ppos)
+static ssize_t ili9341_read(struct fb_info *info, char __user *buf, size_t count, loff_t *ppos)
 {
 	unsigned long p = *ppos;
 	void *dst;
